@@ -125,7 +125,7 @@ choose() {
 }
 
 if [ -n "$remote" ]; then
-  git fetch
+  git fetch > /dev/null 2>&1
 fi
 selected="$(choose)"
 [ -n "$selected" ] || exit 1
