@@ -8,6 +8,8 @@ Usage: gh branch
 Displays an interactive branch switcher that lists local branches in relation
 to the pull requests in the repository. The selected branch is checked out.
 
+Use \`-r\` to include remote branches.
+
 With \`--static\`, print a non-interactive list of branches.
 
 Dependencies: fzf
@@ -22,6 +24,9 @@ while [ $# -gt 0 ]; do
     help
     exit 0
     ;;
+  -r|--remote)
+    remote=1
+    ;;
   --static)
     static=1
     ;;
@@ -34,7 +39,20 @@ while [ $# -gt 0 ]; do
 done
 
 branch_info() {
-  git for-each-ref 'refs/heads/**' --format='%(refname:short)%09%(committerdate:unix)%09%(committerdate:relative)%09%(HEAD)'
+  if [ -n "$remote" ]; then
+    git for-each-ref 'refs/heads/**' 'refs/remotes/**' --format='%(refname:short)%09%(committerdate:unix)%09%(committerdate:relative)%09%(HEAD)' | strip_remote | grep -v '^HEAD' | sort -u -k1,1
+  else
+    git for-each-ref 'refs/heads/**' --format='%(refname:short)%09%(committerdate:unix)%09%(committerdate:relative)%09%(HEAD)'
+  fi
+}
+
+strip_remote() {
+  local branches
+  branches="$(cat)"
+  for r in $(git remote); do
+    branches="$(printf "$branches" | sed "s|^$r/||")"
+  done
+  printf "$branches"
 }
 
 list_prs() {
@@ -106,6 +124,9 @@ choose() {
   fzf --ansi <<<"$rendered"
 }
 
+if [ -n "$remote" ]; then
+  git fetch
+fi
 selected="$(choose)"
 [ -n "$selected" ] || exit 1
 git checkout "${selected%% *}"
